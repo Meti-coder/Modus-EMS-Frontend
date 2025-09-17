@@ -13,9 +13,6 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-
-    console.log("kanaakakk");
-    
     e.preventDefault();
     setError("");
     setSuccessMessage("");
@@ -30,10 +27,8 @@ function RegisterForm() {
     }
 
     setLoading(true);
-    try {
-        console.log("inside service");
-        
-      const data = await register({ username, email, password }, roleName);
+    try {     
+     const data = await register({ username, email, password }, roleName);
       console.log("Registration success:", data);
       setSuccessMessage("Registration successful! You can login now.");
       // clear form
@@ -129,8 +124,8 @@ function RegisterForm() {
               onChange={e => setRoleName(e.target.value)}
               disabled={loading}
             >
-              <option value="USER">User</option>
               <option value="ADMIN">Admin</option>
+              <option value="USER">User</option>
             </select>
           </div>
 

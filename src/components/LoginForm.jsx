@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { login } from '../services/authService';  // named import
+import { login } from '../services/authService';
+import { useNavigate } from 'react-router-dom';
 
 function LoginForm() {
-  const [usernameOrEmail, setUsernameOrEmail] = useState("");
+const navigate=useNavigate();
+  
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -13,17 +16,23 @@ function LoginForm() {
     setError("");
     setSuccessMessage("");
 
-    if (!usernameOrEmail || !password) {
-      setError("Enter both username/email and password");
+    if (!email || !password) {
+      setError("Enter both email and password");
       return;
     }
 
     setLoading(true);
     try {
-      const data = await login(usernameOrEmail, password);
+      const data = await login(email, password);
       console.log("Login success:", data);
-      setSuccessMessage("Login successful!");
-      // maybe redirect or store token
+      localStorage.setItem("id",data.userId);
+      localStorage.removeItem("token")
+      localStorage.setItem("token",data.token);
+      
+      setSuccessMessage(data.message || "Login successful!");
+      // Optionally store token: localStorage.setItem("token", data.token);
+
+      navigate('/home')
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {
@@ -48,14 +57,14 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label htmlFor="usernameOrEmail" className="form-label fw-semibold">Username or Email</label>
+            <label htmlFor="email" className="form-label fw-semibold">Email</label>
             <input
-              type="text"
+              type="email"
               className="form-control"
-              id="usernameOrEmail"
-              placeholder="Enter username or email"
-              value={usernameOrEmail}
-              onChange={e => setUsernameOrEmail(e.target.value)}
+              id="email"
+              placeholder="Enter email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               disabled={loading}
               required
             />
