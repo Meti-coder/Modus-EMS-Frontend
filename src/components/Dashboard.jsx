@@ -10,26 +10,56 @@ import {
   Alert,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from 'jwt-decode';
-
+import { jwtDecode } from "jwt-decode";
+import Cookies from "js-cookie";
 
 const UserTable = () => {
   const [users, setUsers] = useState([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
-  const [remainingTime, setRemainingTime] = useState(null); // Timer state
+  const [remainingTime, setRemainingTime] = useState(null);
   const navigate = useNavigate();
 
-  const pageSize = 4;
-  const token = localStorage.getItem("token");
+  const pageSize = 5;
+  const token = Cookies.get("token");
 
-  // Decode and set timer
+  // Clears token from cookie and localStorage
+  const clearToken = () => {
+    Cookies.remove("token"); // ✅ Removed domain/path
+    localStorage.removeItem("token");
+    localStorage.removeItem("id");
+  };
+
+  // Session expired → logout
+  const handleSessionExpired = () => {
+    clearToken();
+    navigate("/login", { replace: true });
+  };
+
+  // Manual logout button handler
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:8080/api/users/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      clearToken();
+      setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 100); // short delay to ensure UI sync
+    }
+  };
+
+  // Decode JWT and start countdown
   useEffect(() => {
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        const exp = decoded.exp * 1000; // JWT exp is in seconds
+        const exp = decoded.exp * 1000;
         const now = Date.now();
         const timeLeft = exp - now;
 
@@ -38,10 +68,10 @@ const UserTable = () => {
         } else {
           setRemainingTime(Math.floor(timeLeft / 1000));
 
-          const timerInterval = setInterval(() => {
+          const interval = setInterval(() => {
             setRemainingTime((prev) => {
               if (prev <= 1) {
-                clearInterval(timerInterval);
+                clearInterval(interval);
                 handleSessionExpired();
                 return 0;
               }
@@ -49,7 +79,7 @@ const UserTable = () => {
             });
           }, 1000);
 
-          return () => clearInterval(timerInterval);
+          return () => clearInterval(interval);
         }
       } catch (err) {
         console.error("Invalid token");
@@ -60,12 +90,7 @@ const UserTable = () => {
     }
   }, [token]);
 
-  const handleSessionExpired = () => {
-    alert("Session expired. Please log in again.");
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
-
+  // Fetch employees
   const fetchData = async (pageNumber) => {
     setLoading(true);
     try {
@@ -75,6 +100,7 @@ const UserTable = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          credentials: "include",
         }
       );
       const data = await response.json();
@@ -90,11 +116,6 @@ const UserTable = () => {
   useEffect(() => {
     fetchData(page);
   }, [page]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
 
   const handleEdit = (userId) => {
     navigate(`/editEmployee/${userId}`);
@@ -112,24 +133,20 @@ const UserTable = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          credentials: "include",
         }
       );
 
       const result = await response.json();
 
       if (response.ok) {
-        alert(result.message || "Employee deleted successfully.");
         setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
-      } else {
-        alert(result.message || "Failed to delete employee.");
       }
     } catch (error) {
       console.error("Delete error:", error);
-      alert("Something went wrong while deleting the employee.");
     }
   };
 
-  // Helper function to format seconds to MM:SS
   const formatTime = (seconds) => {
     const min = Math.floor(seconds / 60)
       .toString()
@@ -140,7 +157,6 @@ const UserTable = () => {
 
   return (
     <Container className="mt-4">
-      {/* Session Timer Display */}
       {remainingTime !== null && (
         <Alert variant={remainingTime <= 10 ? "danger" : "info"} className="text-center fw-bold">
           Session expires in: {formatTime(remainingTime)}
@@ -220,7 +236,6 @@ const UserTable = () => {
             </Table>
           )}
 
-          {/* Pagination */}
           <Row className="justify-content-center mt-3">
             <Col xs="auto">
               <Button
